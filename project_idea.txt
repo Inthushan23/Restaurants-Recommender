@@ -1,0 +1,20 @@
+https://www.kaggle.com/datasets/undefinenull/million-song-dataset-spotify-lastfm?select=Music+Info.csv
+
+> Hybrid Recommender:
+- Content-Based: Parfait pour un cold start
+- Collaborative Filtering: Recommander par rapport aux autres users
+
+1 - Cold Start:
+L'utilisateur like ou dislike N musiques. 
+
+2 - Recommander des musiques en se basant sur les autres utilisateurs (On fait le lien avec les musiques likés)
+
+
+# Implémenter un système de feedback depuis le point 1.
+Par exemple: 
+
+L'utilisateur n'aime pas une musique. On va donc lui demander le problème pour optimiser la recommandation: Style, artiste, tempo, etc...
+
+---
+BONUS:
+3 - Ajouter une catégorie new où l'utilisateur peut découvrir de nouvelles musiques. (Ne pas conserver les musiques disliké)
