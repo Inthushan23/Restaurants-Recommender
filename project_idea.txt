@@ -4,6 +4,7 @@ https://www.kaggle.com/datasets/undefinenull/million-song-dataset-spotify-lastfm
 - Content-Based: Parfait pour un cold start
 - Collaborative Filtering: Recommander par rapport aux autres users
 
+
 1 - Cold Start:
 L'utilisateur like ou dislike N musiques. 
 
