@@ -23,9 +23,9 @@ def preprocess_data(users_df, restaurants_df, reviews_df, app: FastAPI):
        'compliment_cool', 'compliment_funny', 'compliment_writer', 'compliment_photos',
        'friends', 'name', 'fans', 'useful', 'funny', 'cool', 'elite', 'yelping_since'])
 
-    top_users = users_df.nlargest(10000, 'review_count')['user_id'].values
+    top_users = users_df['user_id'].values
     subset_reviews = reviews_df[reviews_df['user_id'].isin(top_users)].copy()
-    top_restaurants = subset_reviews['business_id'].value_counts().head(5000).index.values
+    top_restaurants = subset_reviews['business_id'].value_counts().index.values
 
     subset_reviews = subset_reviews[subset_reviews['business_id'].isin(top_restaurants)].copy()
 
