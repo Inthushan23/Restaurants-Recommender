@@ -391,24 +391,20 @@ elif st.session_state.logged_in:
                 )
                 
                 st.markdown(
-                    f'<div class="restaurant-name">{current_resto["name"]}</div>',
+                    f'<div class="restaurant-name">{current_resto["business_id"]}</div>',
                     unsafe_allow_html=True
                 )
                 
                 st.markdown(
-                    f'<div class="restaurant-cuisine">{current_resto["cuisine"]}</div>',
+                    f'<div class="restaurant-cuisine">{current_resto["categories"]}</div>',
                     unsafe_allow_html=True
                 )
                 
                 st.markdown(
-                    f'<div class="restaurant-address">📍 {current_resto["address"]}</div>',
+                    f'<div class="restaurant-address">📍</div>',
                     unsafe_allow_html=True
                 )
                 
-                st.markdown(
-                    f'<div class="restaurant-description">{current_resto["description"]}</div>',
-                    unsafe_allow_html=True
-                )
                 
                 st.markdown('</div>', unsafe_allow_html=True)
                 
