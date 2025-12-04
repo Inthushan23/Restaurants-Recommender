@@ -1,19 +1,21 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+from ..repository.load_data import load_data_from_supabase
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Loading Supabase data…")
+    print("Loading Supabase data...")
 
-    #### A COMPLETER
-    app.state.users_df = ...
-    app.state.restaurants_df = ...
-    app.state.review_df = ...
-    app.state.photo_df = ...
+    users_df, restaurants_df, review_df, photo_df = load_data_from_supabase()
 
-    print("Data loaded!")
+    app.state.users_df = users_df
+    app.state.restaurants_df = restaurants_df
+    app.state.review_df = review_df
+    app.state.photo_df = photo_df
 
-    yield 
+    print("Data loaded from Supabase!")
+    yield
+
 
 data_app = FastAPI(lifespan=lifespan)
