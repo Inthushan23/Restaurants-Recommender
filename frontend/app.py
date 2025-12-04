@@ -163,14 +163,12 @@ FAKE_RESTAURANTS = [
 ]
 
 # _,RESTAURANTS,_,_=requests.get(DATASYS_URL+"/data/dataframes")
-RESTAURANTS=pd.read_json(r"services\data_service\data\businessfinal.json")
+restaurants=pd.read_json(r"services\data_service\data\businessfinal.json")
+users=pd.read_parquet(r"services\data_service\data\userfinal.parquet")
+
 
 
 CUISINE_TYPES = ['Restaurants', 'Food', 'Sandwiches', 'Fast Food', 'Pizza', 'American (Traditional)', 'Breakfast & Brunch', 'Burgers', 'Nightlife', 'Bars', 'Mexican', 'American (New)', 'Italian', 'Coffee & Tea', 'Chinese', 'Seafood', 'Salad', 'Chicken Wings', 'Delis', 'Cafes', 'Japanese', 'Desserts', 'Event Planning & Services', 'Bakeries', 'Caterers']
-
-# ========================================
-# INITIALISATION SESSION STATE
-# ========================================
 
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -199,18 +197,12 @@ if "liked_restaurants" not in st.session_state:
 if "disliked_restaurants" not in st.session_state:
     st.session_state.disliked_restaurants = []
 
-# ========================================
-# FONCTIONS DE GESTION UTILISATEUR
-# ========================================
+if "label_tastes" not in st.session_state:
+    st.session_state.label_tastes=[]
 
-# TODO: BACKEND INTEGRATION - Ligne 176
-# Remplacer par requête à la BDD Supabase pour vérifier si l'email existe
-def check_user_exists(email):
-    """Vérifie si l'utilisateur existe dans la BDD via son email"""
-    # Pour l'instant: simulation locale avec session_state
-    if "user_db" not in st.session_state:
-        st.session_state.user_db = {}
-    return email in st.session_state.user_db
+if "recommended_restaurants" not in st.session_state:
+    st.session_state.recommended_restaurants=[]
+
 
 def create_user_account(email, username, password):
     """Crée un utilisateur via le backend FastAPI."""
@@ -220,7 +212,11 @@ def create_user_account(email, username, password):
             "name": username,
             "mdp": password
         }
-        response = requests.post(f"{RECSYS_URL}/app/create_user", params=payload)
+        response = requests.post(f"{RECSYS_URL}/app/create_user", params={
+            "user_id": email,
+            "name": username,
+            "mdp": password
+        })
 
         if response.status_code != 200:
             return {"success": False, "error": "Erreur serveur"}
@@ -277,9 +273,6 @@ def logout_user():
     st.session_state.liked_restaurants = []
     st.session_state.disliked_restaurants = []
 
-# ========================================
-# PAGE DE CONNEXION / INSCRIPTION
-# ========================================
 
 if not st.session_state.logged_in:
     st.markdown('<div class="dish-title">Dishcovery</div>', unsafe_allow_html=True)
@@ -300,28 +293,33 @@ if not st.session_state.logged_in:
         
         if auth_mode == "Se connecter":
             email_input = st.text_input("📧 Email", key="email_login")
+            username_input=email_input
             password_input = st.text_input("🔒 Mot de passe", type="password", key="password_login")
             
-            if st.button("🔓 Se connecter", use_container_width=True):
+            if st.button("🔓 Connection", use_container_width=True):
                 if email_input and password_input:
-                    result = verify_login(email_input, password_input)
-                    if result["success"]:
+                    check=requests.post(DATASYS_URL+"/app/sign_in",params={
+                        "user_id":email_input,
+                        "mdp":password_input
+                    })
+                    if check:
                         st.session_state.logged_in = True
                         st.session_state.user_email = email_input
-                        st.session_state.username = result["username"]
-                        st.session_state.cold_start_done = result["cold_start_done"]
+                        st.session_state.username = email_input
+                        st.session_state.cold_start_done = True
                         st.rerun()
                     else:
-                        st.error(f"❌ {result['error']}")
+                        st.warning("⚠️ Wrong password / user id")
+                        
                 else:
-                    st.warning("⚠️ Veuillez remplir tous les champs")
+                    st.warning("⚠️ Please fill the blank spaces")
         
         else:  # Créer un compte
             email_input = st.text_input("📧 Email", key="email_signup")
-            username_input = st.text_input("👤 Nom d'utilisateur", key="username_signup")
-            password_input = st.text_input("🔒 Mot de passe", type="password", key="password_signup")
+            username_input = st.text_input("👤 Username (email again)", key="username_signup")
+            password_input = st.text_input("🔒 Password", type="password", key="password_signup")
             
-            if st.button("✨ Créer mon compte", use_container_width=True):
+            if st.button("✨ Register", use_container_width=True):
                 if email_input and username_input and password_input:
                     result = create_user_account(email_input, username_input, password_input)
                     if result["success"]:
@@ -329,18 +327,14 @@ if not st.session_state.logged_in:
                         st.session_state.user_email = email_input
                         st.session_state.username = result["username"]
                         st.session_state.cold_start_done = False
-                        st.success("✅ Compte créé avec succès !")
+                        st.success("✅ Registered !")
                         st.rerun()
                     else:
                         st.error(f"❌ {result['error']}")
                 else:
-                    st.warning("⚠️ Veuillez remplir tous les champs")
+                    st.warning("⚠️ Please fill the blank spaces")
         
         st.markdown('</div>', unsafe_allow_html=True)
-
-# ========================================
-# SIDEBAR (visible uniquement si connecté)
-# ========================================
 
 elif st.session_state.logged_in:
     
@@ -350,22 +344,19 @@ elif st.session_state.logged_in:
         unsafe_allow_html=True
     )
     
-    if st.sidebar.button("🚪 Se déconnecter", use_container_width=True):
+    if st.sidebar.button("🚪 Log out", use_container_width=True):
         logout_user()
         st.rerun()
     
     st.sidebar.markdown("---")
     st.sidebar.markdown("## 🍽️ Dishcovery")
-    st.sidebar.markdown("**Votre guide restaurant personnel**")
+    st.sidebar.markdown("**Your personal restaurant guide**")
     
-    # ========================================
-    # COLD START - Sélection des cuisines
-    # ========================================
     
     if not st.session_state.cold_start_done and not st.session_state.selected_cuisines:
         
-        st.markdown('<div class="section-title">🎯 Dites-nous ce que vous aimez</div>', unsafe_allow_html=True)
-        st.markdown("Sélectionnez au moins un type de cuisine pour personnaliser vos recommandations.")
+        st.markdown('<div class="section-title">🎯 Tell us what are your tastes</div>', unsafe_allow_html=True)
+        st.markdown("Select at least one type of food to provide personalised recommendations")
         
         col1, col2, col3 = st.columns([1, 2, 1])
         
@@ -373,12 +364,12 @@ elif st.session_state.logged_in:
             st.markdown('<div class="card">', unsafe_allow_html=True)
             
             selected_cuisines = st.multiselect(
-                "🍽️ Types de cuisine qui vous intéressent",
+                "🍽️ Type of food that you like",
                 CUISINE_TYPES,
-                help="Vous pouvez en sélectionner plusieurs"
+                help="You can chose multiple"
             )
             
-            if st.button("✅ Valider mes choix", use_container_width=True, type="primary"):
+            if st.button("✅ Lock in your choices", use_container_width=True, type="primary"):
                 if selected_cuisines:
                     st.session_state.selected_cuisines = selected_cuisines
                     filtered_restaurants = [r for r in FAKE_RESTAURANTS if r["cuisine"] in selected_cuisines]
@@ -389,22 +380,18 @@ elif st.session_state.logged_in:
                     st.session_state.current_restaurant_index = 0
                     st.rerun()
                 else:
-                    st.warning("⚠️ Veuillez sélectionner au moins un type de cuisine")
+                    st.warning("⚠️ Enter at least a type of food")
             
             st.markdown('</div>', unsafe_allow_html=True)
-    
-    # ========================================
-    # COLD START - Swipe des restaurants
-    # ========================================
     
     elif not st.session_state.cold_start_done and st.session_state.selected_cuisines:
         
         if st.session_state.current_restaurant_index < len(st.session_state.cold_start_restaurants):
             
             current_resto = st.session_state.cold_start_restaurants[st.session_state.current_restaurant_index]
-            label_tastes=[]
+            
 
-            st.markdown('<div class="section-title">👍 Aimez-vous ce restaurant ?</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-title">👍 Do you like this restaurant ?</div>', unsafe_allow_html=True)
             st.markdown(f"**Restaurant {st.session_state.current_restaurant_index + 1} sur {len(st.session_state.cold_start_restaurants)}**")
             
             col1, col2, col3 = st.columns([1, 2, 1])
@@ -444,13 +431,13 @@ elif st.session_state.logged_in:
                 col_dislike, col_like = st.columns(2)
                 
                 with col_dislike:
-                    if st.button("👎 Pas intéressé", use_container_width=True, key=f"dislike_{current_resto['business_id']}"):
-                        label_tastes.append(False)
+                    if st.button("👎 I don't like", use_container_width=True, key=f"dislike_{current_resto['business_id']}"):
+                        st.session_state.label_tastes.append(False)
                         st.rerun()
                 
                 with col_like:
-                    if st.button("❤️ J'aime !", use_container_width=True, type="primary", key=f"like_{current_resto['business_id']}"):
-                        label_tastes.append(True)
+                    if st.button("❤️ I like", use_container_width=True, type="primary", key=f"like_{current_resto['business_id']}"):
+                        st.session_state.label_tastes.append(True)
                         st.rerun()
         
         else:
@@ -459,29 +446,30 @@ elif st.session_state.logged_in:
             link_tastes=[]
             for restaurant in st.session_state.cold_start_restaurants:
                 link_tastes.append(restaurant["business_id"])
-                
-            cold=requests.post(RECSYS_URL+"/recommender/cold_start",user_id=st.session_state.username,cold_start_restaurants=st.session_state.selected_cuisines,link_tastes=link_tastes,label_tastes=label_tastes)
-            # TODO: BACKEND INTEGRATION - Ligne 447
-            # Mettre à jour cold_start_done=True dans la table users pour cet email
+            
+            payload = {
+                "user_id": st.session_state.username,
+                "cold_start_restaurants": st.session_state.selected_cuisines,
+                "link_tastes": link_tastes,
+                "label_tastes": st.session_state.label_tastes
+}
+            cold=requests.post(RECSYS_URL+"/recommender/cold_start",json=payload)
             if "user_db" in st.session_state and st.session_state.user_email in st.session_state.user_db:
                 st.session_state.user_db[st.session_state.user_email]["cold_start_done"] = True
             st.rerun()
-    
-    # ========================================
-    # PAGE PRINCIPALE - RECOMMANDATIONS
-    # ========================================
+
     
     else:
         
-        st.markdown('<div class="dish-title">Vos Recommandations</div>', unsafe_allow_html=True)
+        st.markdown('<div class="dish-title">Your recommendations</div>', unsafe_allow_html=True)
         
         # Barre de recherche avec LLM
         st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown("### 🔍 Recherche intelligente")
+        st.markdown("### 🔍 Smart research")
         
         search_query = st.text_input(
             "Décrivez ce que vous recherchez...",
-            placeholder="Ex: Un restaurant italien romantique pour un dîner en amoureux",
+            placeholder="Example: A french restaurant to get dinner with my girlfriend.",
             label_visibility="collapsed"
         )
         
@@ -492,19 +480,20 @@ elif st.session_state.logged_in:
                     "user_input":search_query,
                     "top_k":30
                 }
-                recommended_restaurants=requests.post(RECSYS_URL+"/recommender/get_rec",json=user_query)
-                st.info(f"🤖 Recherche en cours pour : '{search_query}'")
+                responseLLM=requests.post(RECSYS_URL+"/recommender/get_rec",json=user_query)
+                st.session_state.recommended_restaurants=responseLLM.json()
+                st.info(f"🤖 Active research for : '{search_query}'")
             else:
-                st.warning("⚠️ Veuillez saisir une recherche")
+                st.warning("⚠️ Enter a research")
         
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Recommandations personnalisées
-        st.markdown('<div class="section-title">✨ Recommandations pour vous</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">Your recommendations</div>', unsafe_allow_html=True)
         
         cols = st.columns(3)
         
-        for idx, resto in enumerate(recommended_restaurants):
+        for idx, resto in enumerate(st.session_state.recommended_restaurants):
             with cols[idx % 3]:
                 st.markdown('<div class="restaurant-card">', unsafe_allow_html=True)
                 
@@ -540,12 +529,12 @@ elif st.session_state.logged_in:
                     if st.button("👎", use_container_width=True, key=f"rec_dislike_{resto['business_id']}_{idx}"):
                         review_added=requests.post(RECSYS_URL+"/app/add_review",st.session_state.username, [resto['business_id']], False)
                         st.session_state.disliked_restaurants.append(resto["business_id"])
-                        st.success(f"👎 {resto['name']} retiré de vos recommandations")
+                        st.success(f"👎 {resto['name']} removed from your recommendations")
                 
                 with col_like:
                     if st.button("❤️", use_container_width=True, key=f"rec_like_{resto['business_id']}_{idx}"):
                         review_added=requests.post(RECSYS_URL+"/app/add_review",st.session_state.username, [resto['business_id']], [True])
                         st.session_state.liked_restaurants.append(resto["business_id"])
-                        st.success(f"❤️ {resto['name']} ajouté à vos favoris")
+                        st.success(f"❤️ {resto['name']} added to your favorites")
                 
                 st.markdown('</div>', unsafe_allow_html=True)

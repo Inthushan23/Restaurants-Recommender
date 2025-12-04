@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter
 from ....data_service.src.domain.manage_user import create_user, check_mdp, create_mdp, add_or_update_review
 from ..domain.graphs_relations import create_user as create_user_graph
@@ -10,6 +11,7 @@ app_router = APIRouter(prefix="/app")
 
 @app_router.post("/create_user")
 async def create_manage_user(user_id, name, mdp):
+    print("Appel test")
     cu = await create_user(user_id, name) if callable(getattr(create_user, "__await__", None)) else create_user(user_id, name)
     if not cu:
         return {"create_user": cu}

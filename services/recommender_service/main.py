@@ -1,6 +1,7 @@
 from .src.core.app_state import rec_app
 from .src.core.startup import load_models
 from .src.api.rec_routes import router
+from .src.api.app_routes import app_router
 
 import services.recommender_service.src.core.globals as g
 
@@ -28,3 +29,4 @@ g.restaurant_features = g.scaler_restaurant.fit_transform(subset_restaurants_fil
 
 load_models(rec_app)
 rec_app.include_router(router)
+rec_app.include_router(app_router)

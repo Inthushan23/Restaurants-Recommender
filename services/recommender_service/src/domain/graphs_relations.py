@@ -8,7 +8,7 @@ from ..core.app_state import rec_app
 
 def create_user(user_id) -> str:
 
-    graph_data = rec_app.state.graph_data
+    graph_data = rec_app.state.graph
     graph_with_labels = rec_app.state.graph_with_labels
 
     user_id = user_id
