@@ -208,38 +208,58 @@ def check_user_exists(email):
         st.session_state.user_db = {}
     return email in st.session_state.user_db
 
-# TODO: BACKEND INTEGRATION - Ligne 186
-# Appeler create_user(email, name) et create_mdp(email, password) de login.py
 def create_user_account(email, username, password):
-    """Crée un nouveau compte utilisateur avec email comme business_id unique"""
-    if "user_db" not in st.session_state:
-        st.session_state.user_db = {}
-    
-    if check_user_exists(email):
-        return {"success": False, "error": "Cet email est déjà utilisé"}
-    
-    st.session_state.user_db[email] = {
-        "username": username,
-        "password": password,
-        "cold_start_done": False
-    }
-    return {"success": True, "username": username}
+    """Crée un utilisateur via le backend FastAPI."""
+    try:
+        payload = {
+            "user_id": email,
+            "name": username,
+            "mdp": password
+        }
+        response = requests.post(f"{RECSYS_URL}/create_user", params=payload)
 
-# TODO: BACKEND INTEGRATION - Ligne 203
-# Appeler check_mdp(email, password) de login.py
+        if response.status_code != 200:
+            return {"success": False, "error": "Erreur serveur"}
+
+        data = response.json()
+
+        if data.get("create_user"):
+            return {"success": True, "username": username}
+        else:
+            return {"success": False, "error": "Email déjà utilisé"}
+        
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def verify_login(email, password):
-    """Vérifie les identifiants de connexion via email"""
-    if not check_user_exists(email):
-        return {"success": False, "error": "Email introuvable"}
-    
-    if st.session_state.user_db[email]["password"] != password:
-        return {"success": False, "error": "Mot de passe incorrect"}
-    
-    return {
-        "success": True, 
-        "username": st.session_state.user_db[email]["username"],
-        "cold_start_done": st.session_state.user_db[email]["cold_start_done"]
-    }
+    """Vérifie un login via le backend FastAPI."""
+    try:
+        payload = {
+            "user_id": email,
+            "mdp": password
+        }
+        response = requests.post(f"{RECSYS_URL}/sign_in", params=payload)
+
+        if response.status_code != 200:
+            return {"success": False, "error": "Erreur serveur"}
+
+        data = response.json()
+        result = data.get("check_mdp")
+
+        if result:
+            # Backend only returns True/False
+            return {
+                "success": True,
+                "username": email.split("@")[0],
+                "cold_start_done": False
+            }
+        else:
+            return {"success": False, "error": "Identifiants incorrects"}
+
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 
 def logout_user():
     """Déconnexion de l'utilisateur"""
