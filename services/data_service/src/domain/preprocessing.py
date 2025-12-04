@@ -23,9 +23,9 @@ def preprocess_data(users_df, restaurants_df, reviews_df, app: FastAPI):
        'compliment_cool', 'compliment_funny', 'compliment_writer', 'compliment_photos',
        'friends', 'name', 'fans', 'useful', 'funny', 'cool', 'elite', 'yelping_since'])
 
-    top_users = users_df.nlargest(10000, 'review_count')['user_id'].values
+    top_users = users_df['user_id'].values
     subset_reviews = reviews_df[reviews_df['user_id'].isin(top_users)].copy()
-    top_restaurants = subset_reviews['business_id'].value_counts().head(5000).index.values
+    top_restaurants = subset_reviews['business_id'].value_counts().index.values
 
     subset_reviews = subset_reviews[subset_reviews['business_id'].isin(top_restaurants)].copy()
 
@@ -47,7 +47,7 @@ def preprocess_data(users_df, restaurants_df, reviews_df, app: FastAPI):
     subset_restaurants['price_norm'] = subset_restaurants['RestaurantsPriceRange2'] / 4.0
 
 
-    top_k_cat = top_k_categories(50, subset_restaurants)
+    top_k_cat = top_k_categories(25, subset_restaurants)
     rmv_list = ['Food', 'Event Planning & Services', 'Venues & Event Spaces', 'Restaurants']
     top_k_cat = [i for i in top_k_cat if i not in rmv_list]
 
