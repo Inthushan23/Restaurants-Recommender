@@ -47,7 +47,7 @@ def preprocess_data(users_df, restaurants_df, reviews_df, app: FastAPI):
     subset_restaurants['price_norm'] = subset_restaurants['RestaurantsPriceRange2'] / 4.0
 
 
-    top_k_cat = top_k_categories(50, subset_restaurants)
+    top_k_cat = top_k_categories(25, subset_restaurants)
     rmv_list = ['Food', 'Event Planning & Services', 'Venues & Event Spaces', 'Restaurants']
     top_k_cat = [i for i in top_k_cat if i not in rmv_list]
 
