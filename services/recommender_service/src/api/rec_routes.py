@@ -32,10 +32,13 @@ async def get_rec(input: RecRequest):
 
     return {"recommendation": rec}
 
+@router.post("/cold_start")
+async def cold_start(user_id, cold_start_restaurants, label_tastes):
+    await add_user_relations(user_id, cold_start_restaurants, label_tastes)
 
-def cold_start(user_id,input_tastes,cold_start_restaurants,label_tastes):
-
-    add_user_relations(user_id,cold_start_restaurants,label_tastes)
-
+    tasks = []
     for i in range(len(cold_start_restaurants)):
-        add_review(user_id,cold_start_restaurants[i],label_tastes[i])
+        tasks.append(
+            add_review(user_id, cold_start_restaurants[i], label_tastes[i])
+        )
+    await asyncio.gather(*tasks)
