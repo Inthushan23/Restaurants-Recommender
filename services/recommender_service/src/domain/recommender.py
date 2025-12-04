@@ -116,8 +116,7 @@ def get_top_k_rec(user_id, graph, graph_with_labels, top_k, model_linkpred, mode
 #     #         print(f"Restaurant ID: {row[1]['business_id']} | Stars: {row[1]['stars']} | Categories: {row[1]['categories']}")
     
 #     # return recommanded
-
-def get_recommendation(user_id, user_input, graph, graph_with_labels, model_linkpred, model_labelpred, top_k = 50):
+def get_recommendation(user_id, user_input, graph, graph_with_labels, model_linkpred, model_labelpred, top_k = 30):
     
     prompt=f"""You are an information extraction model.\
 Given a user description of a restaurant,extract all relevant Yelp-style attributes from the list below.\
@@ -141,14 +140,17 @@ Attributes to extract:\
 User input : {user_input}
 """
     
-    RECOMMANDED_PROMPT="""
-    
-    Given a user query and a top recommendation list, you return the top 5 best restaurant based on the query criterias.\
-You will follow this format :\
-restaurant_id1 / restaurant_id2 / restaurant_id3 / restaurant_id4 / restaurant_id5\
-You only provide the top restaurant IDs and you do not create any information, you only refer to the top recommendation list.\
-User query : {userInput}\
-top recommendation list : {recommendationList}
+    RECOMMENDED_PROMPT="""Role: You are a strict recommendation engine.\
+Task: Identify the best restaurants from the provided [recommendation list] based on the [user query].\
+CRITICAL INSTRUCTIONS:\
+1. You MUST return exactly 5 restaurant IDs.\
+2. If fewer than 5 restaurants match the specific criteria, you MUST complete the list with other restaurants from the [recommendation list] to reach a total of 5.\
+3. Do not explain, do not apologize, do not add text. Only return the IDs.\
+4. If the provided list contains fewer than 5 items in total, return all of them.\
+Format strict:\
+id1 / id2 / id3 / id4 / id5\
+User query: {userInput}\
+Recommendation list: {recommendationList}
 """
     
     extract_feat=llm.invoke(prompt).content
@@ -156,10 +158,9 @@ top recommendation list : {recommendationList}
     
     recommended_restaurants = get_top_k_rec(user_id, graph, graph_with_labels, top_k, model_linkpred, model_labelpred)
     print(f"Top recommendation for user {user_id}:")
-    recommanded=[]
-    i=0
+    recommended=[]
+    recs_ids=[]
     for row in subset_restaurants[subset_restaurants["business_id"].isin(recommended_restaurants)].iterrows():
-        i+=1
         tastes_fitted=True
         for categorie in data:
             if row[1][categorie] is not None:
@@ -167,25 +168,30 @@ top recommendation list : {recommendationList}
                     if categorie=="GoodForMeal" or categorie=="BusinessParking":
                         dictType=False
                         for sub in data[categorie]:
-                            if data[categorie][sub]==row[1][categorie][sub]:
-                                dictType=True
+                            if isinstance(row[1][categorie][sub],str):
+                                if data[categorie][sub]==eval(row[1][categorie][sub]):
+                                    dictType=True
+                            else:
+                                if data[categorie][sub]==row[1][categorie][sub]:
+                                    dictType=True
                         tastes_fitted=False if dictType==False else True
-                    elif data[categorie]!= row[1][categorie]:
+                    elif data[categorie]!=row[1][categorie]:
                         tastes_fitted=False
 
         if tastes_fitted:
-            recommanded.append(row[1])
+            recommended.append(row[1])
+            recs_ids.append(row[1]["business_id"])
 
-    recommandation_data=[{cat : dictio[cat] for cat in ["business_id","categories","hours"]} for dictio in recommanded]
-
-    recommendation_choices=llm.invoke(RECOMMANDED_PROMPT.format(userInput=user_input,recommendationList=recommandation_data)).content.split(" / ")
+    recommendation_data=[{cat : dictio[cat] for cat in ["business_id","categories","hours"]} for dictio in recommended]
+    recommendation_choices=llm.invoke(RECOMMENDED_PROMPT.format(userInput=user_input,recommendationList=recommendation_data)).content.split(" / ")
+    recommendation_choices=[id.strip() for id in recommendation_choices if id.strip() in recs_ids]
     if len(recommendation_choices)!=1:
         choices=[]
-        for recommend in recommanded:
+        for recommend in recommended:
             if recommend["business_id"] in recommendation_choices:
                 choices.append(recommend)
     else:
-        choices=recommanded[:5]
+        choices=recommended[:5]
     for choice in choices:
         print(f"Restaurant ID: {choice['business_id']} | Stars: {choice['stars']} | Categories: {choice['categories']}")
     
