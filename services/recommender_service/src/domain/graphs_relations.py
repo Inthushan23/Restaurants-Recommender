@@ -3,7 +3,7 @@ import numpy as np
 import random
 
 import services.recommender_service.src.core.globals as g
-
+from ..core.app_state import rec_app
 # def generate_user_id():
 #     user_id = "".join([chr(random.randint(48, 125)) for _ in range(22)])
 #     if user_id in user_to_idx_lp:
@@ -11,6 +11,10 @@ import services.recommender_service.src.core.globals as g
 #     return user_id
 
 def create_user(user_id) -> str:
+
+    graph_data = rec_app.state.graph_data
+    graph_with_labels = rec_app.state.graph_with_labels
+
     user_id = user_id
     new_idx = max(
         max(g.user_to_idx_lp.values(), default=-1),
@@ -33,13 +37,12 @@ def create_user(user_id) -> str:
     default_feat = torch.tensor(default_padded, dtype=torch.float32).squeeze(0)
 
     g.user_to_idx_lp[user_id] = new_idx
-    g.graph_data.x = torch.cat([g.graph_data.x, default_feat.unsqueeze(0)], dim=0)
+    graph_data.x = torch.cat([graph_data.x, default_feat.unsqueeze(0)], dim=0)
 
     
     g.user_to_idx_ep[user_id] = new_idx
-    g.graph_with_labels.x = torch.cat([g.graph_with_labels.x, default_feat.unsqueeze(0)], dim=0)
+    graph_with_labels.x = torch.cat([graph_with_labels.x, default_feat.unsqueeze(0)], dim=0)
 
-    return user_id
 
 def add_user_relations(user_id: str, rest_id_list: list[str], preference_list: list[int]) -> bool:
     if len(rest_id_list) != len(preference_list):

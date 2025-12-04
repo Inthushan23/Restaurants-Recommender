@@ -63,59 +63,6 @@ def get_top_k_rec(user_id, graph, graph_with_labels, top_k, model_linkpred, mode
     return recommended_restaurants
 
 
-# def get_recommendation(user_id, user_input, graph, graph_with_labels, model_linkpred, model_labelpred, top_k = 50):
-    
-#     prompt=f"""You are an information extraction model.\
-# Given a user description of a restaurant,extract all relevant Yelp-style attributes from the list below.\
-# If an attribute is not mentioned,set it to "unknown".\
-# Output must be a valid JSON object.\
-# Attributes to extract:\
-# -RestaurantsTakeOut\
-# -RestaurantsDelivery\
-# -ByAppointmentOnly\
-# -GoodForKids\
-# -BusinessParking (garage,street,validated,lot,valet)\
-# -BikeParking\
-# -WheelchairAccessible\
-# -OutdoorSeating\
-# -WiFi\
-# -NoiseLevel\
-# -Alcohol\
-# -HasTV\
-# -GoodForMeal (breakfast,lunch,dinner,brunch,dessert)\
-# -RestaurantsReservations\
-# User input : {user_input}
-# """
-    
-#     extract_feat=llm.invoke(prompt).content
-#     data=json.loads(extract_feat)
-#     recommended_restaurants = get_top_k_rec(user_id, graph, graph_with_labels, top_k, model_linkpred, model_labelpred)
-#     print(f"Top recommendation for user {user_id}:")
-#     recommanded=[]
-#     return subset_restaurants[subset_restaurants["business_id"].isin(recommended_restaurants)]
-#     # i=0
-#     # for row in subset_restaurants[subset_restaurants["business_id"].isin(recommended_restaurants)].iterrows():
-#     #     i+=1
-#     #     tastes_fitted=True
-#     #     for categorie in data:
-#     #         if row[1][categorie] is not None:
-#     #             if categorie=="GoodForMeal":
-#     #                 mealType=False
-#     #                 for sub in data[categorie]:
-                        
-#     #                     if data[categorie][sub]==row[1][categorie][sub]:
-#     #                         mealType=True
-#     #                 tastes_fitted=False if mealType==False else True
-#     #             elif data[categorie]!="unknown" and data[categorie]!=row[1][categorie]:
-#     #                 tastes_fitted=False
-
-#     #     if tastes_fitted:
-#     #         # Convert to dict instead of appending the row tuple
-#     #         restaurant_dict = row[1].to_dict()
-#     #         recommanded.append(restaurant_dict)
-#     #         print(f"Restaurant ID: {row[1]['business_id']} | Stars: {row[1]['stars']} | Categories: {row[1]['categories']}")
-    
-#     # return recommanded
 def get_recommendation(user_id, user_input, graph, graph_with_labels, model_linkpred, model_labelpred, top_k = 30):
     
     prompt=f"""You are an information extraction model.\
