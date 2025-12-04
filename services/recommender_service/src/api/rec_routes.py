@@ -5,6 +5,7 @@ from ..domain.graphs_relations import add_user_relations
 from ..core.app_state import rec_app
 from ..input_models.recrequest import RecRequest 
 from ....data_service.src.core.data_app_state import data_app
+from ....data_service.src.domain.manage_user import add_review
 
 router = APIRouter(prefix="/recommender")
 
