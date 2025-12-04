@@ -142,30 +142,10 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ========================================
-# DONNÉES FACTICES - À REMPLACER PAR LA BDD
-# ========================================
-
-# Base de restaurants factices
-FAKE_RESTAURANTS = [
-    {"business_id": 1, "name": "La Bella Vita", "cuisine": "Italienne", "address": "15 Rue de la Paix, 75002 Paris", "description": "Trattoria authentique proposant des pâtes fraîches et des pizzas au feu de bois dans une ambiance chaleureuse.", "icon": "🍝"},
-    {"business_id": 2, "name": "Le Petit Gourmet", "cuisine": "Française", "address": "8 Avenue Montaigne, 75008 Paris", "description": "Bistrot raffiné offrant une cuisine française moderne avec des produits de saison et une carte des vins exceptionnelle.", "icon": "🥖"},
-    {"business_id": 3, "name": "Sakura Garden", "cuisine": "Japonaise", "address": "42 Rue Sainte-Anne, 75001 Paris", "description": "Restaurant japonais traditionnel spécialisé dans les sushis, sashimis et ramens préparés par des chefs expérimentés.", "icon": "🍣"},
-    {"business_id": 4, "name": "El Camino Real", "cuisine": "Mexicaine", "address": "23 Rue Oberkampf, 75011 Paris", "description": "Cuisine mexicaine authentique avec tacos, quesadillas et cocktails maison dans une atmosphère festive et colorée.", "icon": "🌮"},
-    {"business_id": 5, "name": "Golden Dragon", "cuisine": "Chinoise", "address": "56 Avenue d'Ivry, 75013 Paris", "description": "Restaurant chinois proposant dim sum, canard laqué et plats sichuan dans un cadre élégant et traditionnel.", "icon": "🥟"},
-    {"business_id": 6, "name": "Taj Mahal", "cuisine": "Indienne", "address": "12 Rue de la Harpe, 75005 Paris", "description": "Saveurs indiennes authentiques avec currys, tandooris et naans préparés selon les recettes traditionnelles du Punjab.", "icon": "🍛"},
-    {"business_id": 7, "name": "Athens Taverna", "cuisine": "Grecque", "address": "34 Rue Mouffetard, 75005 Paris", "description": "Taverne grecque familiale servant moussaka, souvlaki et mezze dans une ambiance méditerranéenne conviviale.", "icon": "🫒"},
-    {"business_id": 8, "name": "Bangkok Street", "cuisine": "Thaïlandaise", "address": "18 Rue de Belleville, 75020 Paris", "description": "Street food thaïlandaise raffinée avec pad thaï, currys parfumés et desserts exotiques dans un décor moderne.", "icon": "🍜"},
-    {"business_id": 9, "name": "Beirut Express", "cuisine": "Libanaise", "address": "67 Rue du Faubourg Saint-Denis, 75010 Paris", "description": "Cuisine libanaise généreuse proposant houmous, falafels, chawarmas et pâtisseries orientales faites maison.", "icon": "🥙"},
-    {"business_id": 10, "name": "Seoul Kitchen", "cuisine": "Coréenne", "address": "89 Rue Sainte-Anne, 75002 Paris", "description": "Restaurant coréen contemporain spécialisé dans le BBQ coréen, bibimbap et kimchi maison fermenté traditionnellement.", "icon": "🍲"},
-    {"business_id": 11, "name": "Casa Española", "cuisine": "Espagnole", "address": "45 Rue des Martyrs, 75009 Paris", "description": "Bar à tapas authentique proposant paella, jambon ibérique et une sélection de vins espagnols dans une ambiance festive.", "icon": "🥘"},
-    {"business_id": 12, "name": "Marrakech Palace", "cuisine": "Marocaine", "address": "28 Rue des Rosiers, 75004 Paris", "description": "Palais marocain offrant tajines, couscous royal et pâtisseries orientales dans un décor somptueux aux mille et une nuits.", "icon": "🫕"},
-]
-
 # _,RESTAURANTS,_,_=requests.get(DATASYS_URL+"/data/dataframes")
 restaurants=pd.read_json(r"services\data_service\data\businessfinal.json")
 users=pd.read_parquet(r"services\data_service\data\userfinal.parquet")
-
+images=pd.read_json(r"services\data_service\data\photosfinal.json")
 
 
 CUISINE_TYPES = ['Restaurants', 'Food', 'Sandwiches', 'Fast Food', 'Pizza', 'American (Traditional)', 'Breakfast & Brunch', 'Burgers', 'Nightlife', 'Bars', 'Mexican', 'American (New)', 'Italian', 'Coffee & Tea', 'Chinese', 'Seafood', 'Salad', 'Chicken Wings', 'Delis', 'Cafes', 'Japanese', 'Desserts', 'Event Planning & Services', 'Bakeries', 'Caterers']
@@ -203,6 +183,10 @@ if "label_tastes" not in st.session_state:
 if "recommended_restaurants" not in st.session_state:
     st.session_state.recommended_restaurants=[]
 
+if "filtered_restaurants" not in st.session_state:
+    st.session_state.filtered_restaurants=[]
+
+
 
 def create_user_account(email, username, password):
     """Crée un utilisateur via le backend FastAPI."""
@@ -226,7 +210,7 @@ def create_user_account(email, username, password):
         if data.get("create_user"):
             return {"success": True, "username": username}
         else:
-            return {"success": False, "error": "Email déjà utilisé"}
+            return {"success": False, "error": "Email already used"}
         
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -255,7 +239,7 @@ def verify_login(email, password):
                 "cold_start_done": False
             }
         else:
-            return {"success": False, "error": "Identifiants incorrects"}
+            return {"success": False, "error": "Wrong inputs"}
 
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -276,7 +260,7 @@ def logout_user():
 
 if not st.session_state.logged_in:
     st.markdown('<div class="dish-title">Dishcovery</div>', unsafe_allow_html=True)
-    st.markdown('<div class="dish-subtitle">Découvrez les restaurants faits pour vous</div>', unsafe_allow_html=True)
+    st.markdown('<div class="dish-subtitle">Discover the restaurant that fits you the most</div>', unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
@@ -284,25 +268,25 @@ if not st.session_state.logged_in:
         st.markdown('<div class="card">', unsafe_allow_html=True)
         
         auth_mode = st.radio(
-            "Choisissez une option",
-            ["Se connecter", "Créer un compte"],
+            "Chose an option",
+            ["Log in", "Register"],
             horizontal=True
         )
         
         st.markdown("---")
         
-        if auth_mode == "Se connecter":
+        if auth_mode == "Log in":
             email_input = st.text_input("📧 Email", key="email_login")
             username_input=email_input
-            password_input = st.text_input("🔒 Mot de passe", type="password", key="password_login")
+            password_input = st.text_input("🔒 Password", type="password", key="password_login")
             
-            if st.button("🔓 Connection", use_container_width=True):
+            if st.button("🔓 Log in", use_container_width=True):
                 if email_input and password_input:
-                    check=requests.post(DATASYS_URL+"/app/sign_in",params={
+                    check=requests.post(RECSYS_URL+"/app/sign_in",params={
                         "user_id":email_input,
                         "mdp":password_input
                     })
-                    if check:
+                    if check.json().get("check_mdp"):
                         st.session_state.logged_in = True
                         st.session_state.user_email = email_input
                         st.session_state.username = email_input
@@ -368,14 +352,15 @@ elif st.session_state.logged_in:
                 CUISINE_TYPES,
                 help="You can chose multiple"
             )
-            
             if st.button("✅ Lock in your choices", use_container_width=True, type="primary"):
                 if selected_cuisines:
                     st.session_state.selected_cuisines = selected_cuisines
-                    filtered_restaurants = [r for r in FAKE_RESTAURANTS if r["cuisine"] in selected_cuisines]
+                    for selection in selected_cuisines:
+                        st.session_state.filtered_restaurants.extend(restaurants[restaurants["categories"].str.contains(selection, case=False, na=False)])
+                    
                     st.session_state.cold_start_restaurants = random.sample(
-                        filtered_restaurants, 
-                        min(5, len(filtered_restaurants))
+                        st.session_state.filtered_restaurants, 
+                        min(5, len(st.session_state.filtered_restaurants))
                     )
                     st.session_state.current_restaurant_index = 0
                     st.rerun()
@@ -401,7 +386,7 @@ elif st.session_state.logged_in:
                 
                 # Photo du restaurant (placeholder avec icône)
                 st.markdown(
-                    f'<div class="restaurant-photo">{current_resto["icon"]}</div>',
+                    f'<div class="restaurant-photo"></div>',
                     unsafe_allow_html=True
                 )
                 
@@ -468,7 +453,7 @@ elif st.session_state.logged_in:
         st.markdown("### 🔍 Smart research")
         
         search_query = st.text_input(
-            "Décrivez ce que vous recherchez...",
+            "Describe what you would like",
             placeholder="Example: A french restaurant to get dinner with my girlfriend.",
             label_visibility="collapsed"
         )
@@ -498,7 +483,7 @@ elif st.session_state.logged_in:
                 st.markdown('<div class="restaurant-card">', unsafe_allow_html=True)
                 
                 st.markdown(
-                    f'<div class="restaurant-photo">{resto["icon"]}</div>',
+                    f'<div class="restaurant-photo"></div>',
                     unsafe_allow_html=True
                 )
                 
