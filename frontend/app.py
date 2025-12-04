@@ -1,8 +1,12 @@
 import streamlit as st
 import random
 import requests
+import json
+import pandas as pd
+
 
 RECSYS_URL="http://localhost:8000"
+DATASYS_URL="http://localhost:8001"
 
 # Configuration de la page
 st.set_page_config(
@@ -158,8 +162,8 @@ FAKE_RESTAURANTS = [
     {"business_id": 12, "name": "Marrakech Palace", "cuisine": "Marocaine", "address": "28 Rue des Rosiers, 75004 Paris", "description": "Palais marocain offrant tajines, couscous royal et pâtisseries orientales dans un décor somptueux aux mille et une nuits.", "icon": "🫕"},
 ]
 
-RESTAURANTS=requests.get(RECSYS_URL+"/dataframes")
-
+# _,RESTAURANTS,_,_=requests.get(DATASYS_URL+"/data/dataframes")
+RESTAURANTS=pd.read_json(r"services\data_service\data\businessfinal.json")
 
 
 CUISINE_TYPES = ['Restaurants', 'Food', 'Sandwiches', 'Fast Food', 'Pizza', 'American (Traditional)', 'Breakfast & Brunch', 'Burgers', 'Nightlife', 'Bars', 'Mexican', 'American (New)', 'Italian', 'Coffee & Tea', 'Chinese', 'Seafood', 'Salad', 'Chicken Wings', 'Delis', 'Cafes', 'Japanese', 'Desserts', 'Event Planning & Services', 'Bakeries', 'Caterers']
@@ -216,7 +220,7 @@ def create_user_account(email, username, password):
             "name": username,
             "mdp": password
         }
-        response = requests.post(f"{RECSYS_URL}/create_user", params=payload)
+        response = requests.post(f"{RECSYS_URL}/app/create_user", params=payload)
 
         if response.status_code != 200:
             return {"success": False, "error": "Erreur serveur"}
@@ -239,7 +243,7 @@ def verify_login(email, password):
             "user_id": email,
             "mdp": password
         }
-        response = requests.post(f"{RECSYS_URL}/sign_in", params=payload)
+        response = requests.post(f"{RECSYS_URL}/app/sign_in", params=payload)
 
         if response.status_code != 200:
             return {"success": False, "error": "Erreur serveur"}
@@ -377,9 +381,6 @@ elif st.session_state.logged_in:
             if st.button("✅ Valider mes choix", use_container_width=True, type="primary"):
                 if selected_cuisines:
                     st.session_state.selected_cuisines = selected_cuisines
-                    # TODO: BACKEND INTEGRATION - Ligne 353
-                    # Filtrer les restaurants selon les cuisines sélectionnées via requête BDD
-                    # Au lieu de filtrer localement, récupérer 5 restaurants de la BDD correspondant aux cuisines
                     filtered_restaurants = [r for r in FAKE_RESTAURANTS if r["cuisine"] in selected_cuisines]
                     st.session_state.cold_start_restaurants = random.sample(
                         filtered_restaurants, 
@@ -459,7 +460,7 @@ elif st.session_state.logged_in:
             for restaurant in st.session_state.cold_start_restaurants:
                 link_tastes.append(restaurant["business_id"])
                 
-            cold=requests.post(RECSYS_URL+"/cold_start",user_id=st.session_state.username,cold_start_restaurants=st.session_state.selected_cuisines,link_tastes=link_tastes,label_tastes=label_tastes)
+            cold=requests.post(RECSYS_URL+"/recommender/cold_start",user_id=st.session_state.username,cold_start_restaurants=st.session_state.selected_cuisines,link_tastes=link_tastes,label_tastes=label_tastes)
             # TODO: BACKEND INTEGRATION - Ligne 447
             # Mettre à jour cold_start_done=True dans la table users pour cet email
             if "user_db" in st.session_state and st.session_state.user_email in st.session_state.user_db:
@@ -491,7 +492,7 @@ elif st.session_state.logged_in:
                     "user_input":search_query,
                     "top_k":30
                 }
-                recommended_restaurants=requests.post(RECSYS_URL+"/get_rec",json=user_query)
+                recommended_restaurants=requests.post(RECSYS_URL+"/recommender/get_rec",json=user_query)
                 st.info(f"🤖 Recherche en cours pour : '{search_query}'")
             else:
                 st.warning("⚠️ Veuillez saisir une recherche")
@@ -537,13 +538,13 @@ elif st.session_state.logged_in:
                 
                 with col_dislike:
                     if st.button("👎", use_container_width=True, key=f"rec_dislike_{resto['business_id']}_{idx}"):
-                        review_added=requests.post(RECSYS_URL+"",st.session_state.username, resto['business_id'], False)
+                        review_added=requests.post(RECSYS_URL+"/app/add_review",st.session_state.username, [resto['business_id']], False)
                         st.session_state.disliked_restaurants.append(resto["business_id"])
                         st.success(f"👎 {resto['name']} retiré de vos recommandations")
                 
                 with col_like:
                     if st.button("❤️", use_container_width=True, key=f"rec_like_{resto['business_id']}_{idx}"):
-                        review_added=requests.post(RECSYS_URL+"",st.session_state.username, resto['business_id'], True)
+                        review_added=requests.post(RECSYS_URL+"/app/add_review",st.session_state.username, [resto['business_id']], [True])
                         st.session_state.liked_restaurants.append(resto["business_id"])
                         st.success(f"❤️ {resto['name']} ajouté à vos favoris")
                 

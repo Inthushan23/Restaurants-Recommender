@@ -5,7 +5,7 @@ from ..domain.graphs_relations import add_user_relations
 from ..core.app_state import rec_app
 from ..input_models.recrequest import RecRequest 
 from ....data_service.src.core.data_app_state import data_app
-from ....data_service.src.domain.manage_user import add_review
+from .app_routes import add_relations
 
 router = APIRouter(prefix="/recommender")
 
@@ -36,9 +36,4 @@ async def get_rec(input: RecRequest):
 async def cold_start(user_id, cold_start_restaurants, label_tastes):
     await add_user_relations(user_id, cold_start_restaurants, label_tastes)
 
-    tasks = []
-    for i in range(len(cold_start_restaurants)):
-        tasks.append(
-            add_review(user_id, cold_start_restaurants[i], label_tastes[i])
-        )
-    await asyncio.gather(*tasks)
+    await add_relations(user_id, cold_start_restaurants, label_tastes)
