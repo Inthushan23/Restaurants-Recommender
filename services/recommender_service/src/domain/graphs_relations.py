@@ -4,11 +4,7 @@ import random
 
 import services.recommender_service.src.core.globals as g
 from ..core.app_state import rec_app
-# def generate_user_id():
-#     user_id = "".join([chr(random.randint(48, 125)) for _ in range(22)])
-#     if user_id in user_to_idx_lp:
-#         return generate_user_id()
-#     return user_id
+
 
 def create_user(user_id) -> str:
 
