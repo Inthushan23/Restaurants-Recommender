@@ -1,35 +1,18 @@
-import os
-from typing import Tuple
-import pandas as pd
-from dotenv import load_dotenv
-from supabase import create_client, Client
+import pandas as pd 
+from ..core.config import USER_PATH, REVIEW_PATH, BUSINESS_PATH, PHOTO_PATH
 
+def load_data():
+    try:
+        df_users = pd.read_parquet(USER_PATH)
+        df_reviews = pd.read_parquet(REVIEW_PATH)
+        df_restaurants = pd.read_json(BUSINESS_PATH)
+        df_photos = pd.read_json(PHOTO_PATH)
+    except FileNotFoundError as fe:
+        print("ERROR - ", fe)
+        return None 
+    except Exception as e:
+        print("ERROR - ", e)
+        return None
+    return df_users, df_restaurants, df_reviews, df_photos
+        
 
-def load_data_from_supabase() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """
-    Load the four datasets (users, restaurants, reviews, photos) from Supabase.
-    """
-
-    # Load .env variables
-    load_dotenv()
-
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        raise RuntimeError("Supabase credentials not found. Check your .env file.")
-
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-    def fetch_table(table_name: str) -> pd.DataFrame:
-        response = supabase.table(table_name).select("*").execute()
-        if response.data is None:
-            raise RuntimeError(f"Could not fetch table '{table_name}' from Supabase.")
-        return pd.DataFrame(response.data)
-
-    users_df = fetch_table("users")
-    restaurants_df = fetch_table("business")
-    review_df = fetch_table("reviews")
-    photo_df = fetch_table("photos")
-
-    return users_df, restaurants_df, review_df, photo_df

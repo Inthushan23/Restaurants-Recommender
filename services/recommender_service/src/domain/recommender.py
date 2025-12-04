@@ -16,7 +16,9 @@ import services.recommender_service.src.core.globals as g
 
 # Temporaire
 import pandas as pd
-subset_restaurants = pd.read_json("business_r.json")
+from ....data_service.src.core.data_app_state import data_app
+
+subset_restaurants = data_app.state.subset_restaurants
 
 
 llm=ChatOpenAI(
@@ -165,7 +167,7 @@ top recommendation list : {recommendationList}
                     if categorie=="GoodForMeal" or categorie=="BusinessParking":
                         dictType=False
                         for sub in data[categorie]:
-                            if data[categorie][sub]==eval(row[1][categorie])[sub]:
+                            if data[categorie][sub]==row[1][categorie][sub]:
                                 dictType=True
                         tastes_fitted=False if dictType==False else True
                     elif data[categorie]!= row[1][categorie]:

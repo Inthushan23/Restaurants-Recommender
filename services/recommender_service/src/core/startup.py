@@ -7,8 +7,6 @@ from ..domain.gnn.gnn_link_predictor import GNNLinkPredictor
 
 
 
-
-
 def load_models(app: FastAPI):
     link_pred = GNNLinkPredictor(in_channels= app.state.graph.x.size(1), hidden_channels=512, out_channels=256).load(LINK_PRED_MODEL)
     link_pred.eval()

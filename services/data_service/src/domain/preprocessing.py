@@ -2,7 +2,7 @@ import ast
 from collections import Counter
 from fastapi import FastAPI
 import pandas as pd
-
+import numpy as np
 
 
 def top_k_categories(k, subset_restaurants):
@@ -26,11 +26,13 @@ def preprocess_data(users_df, restaurants_df, reviews_df, app: FastAPI):
     top_users = users_df.nlargest(10000, 'review_count')['user_id'].values
     subset_reviews = reviews_df[reviews_df['user_id'].isin(top_users)].copy()
     top_restaurants = subset_reviews['business_id'].value_counts().head(5000).index.values
+
     subset_reviews = subset_reviews[subset_reviews['business_id'].isin(top_restaurants)].copy()
 
     subset_users = users_df[users_df['user_id'].isin(subset_reviews['user_id'].unique())].copy()
     subset_restaurants = restaurants_df[restaurants_df['business_id'].isin(top_restaurants)].copy()
 
+    
     subset_users['review_count_log'] = np.log1p(subset_users['review_count'])
     subset_users['average_stars_norm'] = subset_users['average_stars'] / 5.0
     user_features_cols = ['review_count_log', 'average_stars_norm']
@@ -107,5 +109,4 @@ def preprocess_data(users_df, restaurants_df, reviews_df, app: FastAPI):
 
     subset_restaurants_fillna = subset_restaurants[restaurant_features_cols].fillna(0)
     subset_users_fillna = subset_users[user_features_cols].fillna(0)
-
     app.state.subset_users, app.state.subset_restaurants, app.state.subset_reviews, app.state.subset_users_fillna, app.state.subset_restaurants_fillna = subset_users, subset_restaurants, subset_reviews, subset_users_fillna, subset_restaurants_fillna
