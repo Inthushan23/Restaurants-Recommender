@@ -464,7 +464,7 @@ elif st.session_state.logged_in:
             label_visibility="collapsed"
         )
         
-        if st.button("🔎 Rechercher", use_container_width=True):
+        if st.button("🔎 Search", use_container_width=True):
             if search_query:
                 user_query={
                     "user_id":st.session_state.username,
@@ -517,13 +517,13 @@ elif st.session_state.logged_in:
                 
                 with col_dislike:
                     if st.button("👎", use_container_width=True, key=f"rec_dislike_{resto['business_id']}_{idx}"):
-                        add_review(st.session_state.username, resto['business_id'], False)
+                        review_added=requests.post(RECSYS_URL+"",st.session_state.username, resto['business_id'], False)
                         st.session_state.disliked_restaurants.append(resto["business_id"])
                         st.success(f"👎 {resto['name']} retiré de vos recommandations")
                 
                 with col_like:
                     if st.button("❤️", use_container_width=True, key=f"rec_like_{resto['business_id']}_{idx}"):
-                        add_review(st.session_state.username, resto['business_id'], True)
+                        review_added=requests.post(RECSYS_URL+"",st.session_state.username, resto['business_id'], True)
                         st.session_state.liked_restaurants.append(resto["business_id"])
                         st.success(f"❤️ {resto['name']} ajouté à vos favoris")
                 
