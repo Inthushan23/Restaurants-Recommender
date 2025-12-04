@@ -27,7 +27,6 @@ def load_data_from_supabase() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame,
             raise RuntimeError(f"Could not fetch table '{table_name}' from Supabase.")
         return pd.DataFrame(response.data)
 
-    # ⚠️ IMPORTANT → remplace ici par les VRAIS noms de tes tables dans Supabase
     users_df = fetch_table("users")
     restaurants_df = fetch_table("business")
     review_df = fetch_table("reviews")
