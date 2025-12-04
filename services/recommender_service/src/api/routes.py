@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter
 from ..domain.recommender import get_recommendation
 from ..core.app_state import rec_app
@@ -6,16 +7,27 @@ from ..input_models.recrequest import RecRequest
 
 router = APIRouter(prefix="/recommender")
 
+
 @router.post("/")
-def get_rec(input: RecRequest):
-   model_linkpred = rec_app.state.link_pred
-   model_labelpred = rec_app.state.edge_pred
+async def get_rec(input: RecRequest):
+    model_linkpred = rec_app.state.link_pred
+    model_labelpred = rec_app.state.edge_pred
 
-   graph = rec_app.state.graph
-   graph_with_labels = rec_app.state.graph_with_labels
- 
+    graph = rec_app.state.graph
+    graph_with_labels = rec_app.state.graph_with_labels
 
-   if model_labelpred and model_linkpred:
-     rec = get_recommendation(input.user_id, input.user_input, graph, graph_with_labels, model_linkpred, model_labelpred, input.top_k)
+    if not (model_labelpred and model_linkpred):
+        return {"recommendation": []}
 
-   return {"recommendation": rec}
+    rec = await asyncio.to_thread(
+        get_recommendation,
+        input.user_id,
+        input.user_input,
+        graph,
+        graph_with_labels,
+        model_linkpred,
+        model_labelpred,
+        input.top_k,
+    )
+
+    return {"recommendation": rec}
