@@ -145,7 +145,6 @@ st.markdown(
 # _,RESTAURANTS,_,_=requests.get(DATASYS_URL+"/data/dataframes")
 restaurants=pd.read_json(r"services\data_service\data\businessfinal.json")
 users=pd.read_parquet(r"services\data_service\data\userfinal.parquet")
-images=pd.read_json(r"services\data_service\data\photosfinal.json")
 
 
 CUISINE_TYPES = ['Restaurants', 'Food', 'Sandwiches', 'Fast Food', 'Pizza', 'American (Traditional)', 'Breakfast & Brunch', 'Burgers', 'Nightlife', 'Bars', 'Mexican', 'American (New)', 'Italian', 'Coffee & Tea', 'Chinese', 'Seafood', 'Salad', 'Chicken Wings', 'Delis', 'Cafes', 'Japanese', 'Desserts', 'Event Planning & Services', 'Bakeries', 'Caterers']
@@ -171,12 +170,6 @@ if "cold_start_restaurants" not in st.session_state:
 if "current_restaurant_index" not in st.session_state:
     st.session_state.current_restaurant_index = 0
 
-if "liked_restaurants" not in st.session_state:
-    st.session_state.liked_restaurants = []
-
-if "disliked_restaurants" not in st.session_state:
-    st.session_state.disliked_restaurants = []
-
 if "label_tastes" not in st.session_state:
     st.session_state.label_tastes=[]
 
@@ -184,7 +177,10 @@ if "recommended_restaurants" not in st.session_state:
     st.session_state.recommended_restaurants=[]
 
 if "filtered_restaurants" not in st.session_state:
-    st.session_state.filtered_restaurants=[]
+    st.session_state.filtered_restaurants=pd.DataFrame()
+
+if "cold_rest_id" not in st.session_state:
+    st.session_state.cold_rest_id=[]
 
 
 
@@ -254,8 +250,6 @@ def logout_user():
     st.session_state.selected_cuisines = []
     st.session_state.cold_start_restaurants = []
     st.session_state.current_restaurant_index = 0
-    st.session_state.liked_restaurants = []
-    st.session_state.disliked_restaurants = []
 
 
 if not st.session_state.logged_in:
@@ -356,11 +350,12 @@ elif st.session_state.logged_in:
                 if selected_cuisines:
                     st.session_state.selected_cuisines = selected_cuisines
                     for selection in selected_cuisines:
-                        st.session_state.filtered_restaurants.extend(restaurants[restaurants["categories"].str.contains(selection, case=False, na=False)])
+                        st.session_state.filtered_restaurants=pd.concat([st.session_state.filtered_restaurants,restaurants[restaurants["categories"].str.contains(selection, case=False, na=False)]],ignore_index=True)
                     
+                    restaurants_list = st.session_state.filtered_restaurants.to_dict('records')
                     st.session_state.cold_start_restaurants = random.sample(
-                        st.session_state.filtered_restaurants, 
-                        min(5, len(st.session_state.filtered_restaurants))
+                        restaurants_list, 
+                        min(5, len(restaurants_list))
                     )
                     st.session_state.current_restaurant_index = 0
                     st.rerun()
@@ -374,7 +369,17 @@ elif st.session_state.logged_in:
         if st.session_state.current_restaurant_index < len(st.session_state.cold_start_restaurants):
             
             current_resto = st.session_state.cold_start_restaurants[st.session_state.current_restaurant_index]
-            
+
+            for restaurant in st.session_state.cold_start_restaurants:
+                st.session_state.cold_rest_id.append(restaurant["business_id"])
+
+            photos_response = requests.post(DATASYS_URL+"/data/get_photo", json={
+                "rest_id_list": [current_resto["business_id"]]
+            })
+            photos_list=photos_response.json()
+            photos=[]
+            for element in photos_list:
+                photos.append(photos_list[element])
 
             st.markdown('<div class="section-title">👍 Do you like this restaurant ?</div>', unsafe_allow_html=True)
             st.markdown(f"**Restaurant {st.session_state.current_restaurant_index + 1} sur {len(st.session_state.cold_start_restaurants)}**")
@@ -384,14 +389,17 @@ elif st.session_state.logged_in:
             with col2:
                 st.markdown('<div class="restaurant-card">', unsafe_allow_html=True)
                 
-                # Photo du restaurant (placeholder avec icône)
                 st.markdown(
-                    f'<div class="restaurant-photo"></div>',
+                    f"""
+                    <div class="restaurant-photo">
+                        <img src="{photos[0]}" alt="Restaurant Image">
+                    </div>
+                    """,
                     unsafe_allow_html=True
                 )
                 
                 st.markdown(
-                    f'<div class="restaurant-name">{current_resto["business_id"]}</div>',
+                    f'<div class="restaurant-name">{current_resto["name"]}</div>',
                     unsafe_allow_html=True
                 )
                 
@@ -401,7 +409,7 @@ elif st.session_state.logged_in:
                 )
                 
                 st.markdown(
-                    f'<div class="restaurant-address">📍</div>',
+                    f'<div class="restaurant-address">📍{current_resto["address"]}</div>',
                     unsafe_allow_html=True
                 )
                 
@@ -414,29 +422,23 @@ elif st.session_state.logged_in:
                 with col_dislike:
                     if st.button("👎 I don't like", use_container_width=True, key=f"dislike_{current_resto['business_id']}"):
                         st.session_state.label_tastes.append(False)
+                        st.session_state.current_restaurant_index += 1
                         st.rerun()
                 
                 with col_like:
                     if st.button("❤️ I like", use_container_width=True, type="primary", key=f"like_{current_resto['business_id']}"):
                         st.session_state.label_tastes.append(True)
+                        st.session_state.current_restaurant_index += 1
                         st.rerun()
         
         else:
-            # Cold start terminé
             st.session_state.cold_start_done = True
-            link_tastes=[]
-            for restaurant in st.session_state.cold_start_restaurants:
-                link_tastes.append(restaurant["business_id"])
-            
-            payload = {
+
+            cold=requests.post(RECSYS_URL+"/recommender/cold_start",params={
                 "user_id": st.session_state.username,
-                "cold_start_restaurants": st.session_state.selected_cuisines,
-                "link_tastes": link_tastes,
+                "cold_start_restaurants": st.session_state.cold_rest_id,
                 "label_tastes": st.session_state.label_tastes
-}
-            cold=requests.post(RECSYS_URL+"/recommender/cold_start",json=payload)
-            if "user_db" in st.session_state and st.session_state.user_email in st.session_state.user_db:
-                st.session_state.user_db[st.session_state.user_email]["cold_start_done"] = True
+            })
             st.rerun()
 
     
@@ -461,61 +463,78 @@ elif st.session_state.logged_in:
                     "user_input":search_query,
                     "top_k":30
                 }
-                responseLLM=requests.post(RECSYS_URL+"/recommender/get_rec",json=user_query)
-                st.session_state.recommended_restaurants=responseLLM.json()
-                st.info(f"🤖 Active research for : '{search_query}'")
+                with st.spinner("AI is thinking..."):
+                    responseLLM=requests.post(RECSYS_URL+"/recommender/get_rec",json=user_query)
+                    if responseLLM.status_code == 200:
+                        st.session_state.recommended_restaurants=responseLLM.json()["recommendation"]
+                        st.info(f"🤖 Active research for : '{search_query}'")
+                    else:
+                        st.error("Error fetching recommendations")
+                
             else:
                 st.warning("⚠️ Enter a research")
         
         st.markdown('</div>', unsafe_allow_html=True)
         
-        # Recommandations personnalisées
-        st.markdown('<div class="section-title">Your recommendations</div>', unsafe_allow_html=True)
-        
-        cols = st.columns(3)
-        
-        for idx, resto in enumerate(st.session_state.recommended_restaurants):
-            with cols[idx % 3]:
-                st.markdown('<div class="restaurant-card">', unsafe_allow_html=True)
-                
-                st.markdown(
-                    f'<div class="restaurant-photo"></div>',
-                    unsafe_allow_html=True
-                )
-                
-                st.markdown(
-                    f'<div class="restaurant-name">{resto["name"]}</div>',
-                    unsafe_allow_html=True
-                )
-                
-                st.markdown(
-                    f'<span class="badge">{resto["cuisine"]}</span>',
-                    unsafe_allow_html=True
-                )
-                
-                st.markdown(
-                    f'<div class="restaurant-address">📍 {resto["address"]}</div>',
-                    unsafe_allow_html=True
-                )
-                
-                st.markdown(
-                    f'<div class="restaurant-description">{resto["description"]}</div>',
-                    unsafe_allow_html=True
-                )
-                
-                # Boutons Like / Dislike pour chaque restaurant
-                col_dislike, col_like = st.columns(2)
-                
-                with col_dislike:
-                    if st.button("👎", use_container_width=True, key=f"rec_dislike_{resto['business_id']}_{idx}"):
-                        review_added=requests.post(RECSYS_URL+"/app/add_review",st.session_state.username, [resto['business_id']], False)
-                        st.session_state.disliked_restaurants.append(resto["business_id"])
-                        st.success(f"👎 {resto['name']} removed from your recommendations")
-                
-                with col_like:
-                    if st.button("❤️", use_container_width=True, key=f"rec_like_{resto['business_id']}_{idx}"):
-                        review_added=requests.post(RECSYS_URL+"/app/add_review",st.session_state.username, [resto['business_id']], [True])
-                        st.session_state.liked_restaurants.append(resto["business_id"])
-                        st.success(f"❤️ {resto['name']} added to your favorites")
-                
-                st.markdown('</div>', unsafe_allow_html=True)
+        if st.session_state.recommended_restaurants:
+            photos_dict={}
+            rec_ids=[rest["business_id"] for rest in st.session_state.recommended_restaurants]
+            photos_response=requests.post(DATASYS_URL+"/data/get_photo", json={"rest_id_list": rec_ids})
+            photos_dict=photos_response.json().get("photos_id", {})
+
+            st.markdown('<div class="section-title">Your recommendations</div>', unsafe_allow_html=True)
+            
+            cols = st.columns(3)
+            
+            for idx, resto in enumerate(st.session_state.recommended_restaurants):
+                rest_id=resto["business_id"]
+                image=photos_dict.get(rest_id)
+                with cols[idx % 3]:
+                    st.markdown('<div class="restaurant-card">', unsafe_allow_html=True)
+                    
+                    st.markdown(
+                        f"""
+                        <div class="restaurant-photo">
+                            <img src="{image[0]}" alt="Picture">
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+                    st.markdown(
+                        f'<div class="restaurant-name">{restaurants[restaurants["business_id"]==resto["business_id"]]["name"]}</div>',
+                        unsafe_allow_html=True
+                    )
+                    
+                    st.markdown(
+                        f'<span class="badge">{resto["categories"]}</span>',
+                        unsafe_allow_html=True
+                    )
+                    
+                    st.markdown(
+                        f'<div class="restaurant-address">📍</div>',
+                        unsafe_allow_html=True
+                    )
+                    
+                    # Boutons Like / Dislike pour chaque restaurant
+                    col_dislike, col_like = st.columns(2)
+                    
+                    with col_dislike:
+                        if st.button("👎", use_container_width=True, key=f"rec_dislike_{resto['business_id']}_{idx}"):
+                            review_added=requests.post(RECSYS_URL+"/app/add_review",params={
+                                "user_id":st.session_state.username, 
+                                "restaurants":[resto['business_id']], 
+                                "labels":[False]
+                                })
+                            st.success(f"👎 removed from your recommendations")
+                    
+                    with col_like:
+                        if st.button("❤️", use_container_width=True, key=f"rec_like_{resto['business_id']}_{idx}"):
+                            review_added=requests.post(RECSYS_URL+"/app/add_review",params={
+                                "user_id":st.session_state.username, 
+                                "restaurants":[resto['business_id']], 
+                                "labels":[True]
+                                })
+                            st.success(f"❤️ added to your favorites")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)

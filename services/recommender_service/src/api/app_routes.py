@@ -11,7 +11,6 @@ app_router = APIRouter(prefix="/app")
 
 @app_router.post("/create_user")
 async def create_manage_user(user_id, name, mdp):
-    print("Appel test")
     cu = await create_user(user_id, name) if callable(getattr(create_user, "__await__", None)) else create_user(user_id, name)
     if not cu:
         return {"create_user": cu}
@@ -44,7 +43,4 @@ def add_relations(user_id: str, restaurants: list, labels:list): # True False
         for rest, lab in zip(restaurants, lab):
             add_or_update_review(user_id, rest, lab) 
             add_review_df(user_id, rest, lab)
-        return {"add_review": True}
-    else:
-        return {"add_review": False}
 

@@ -40,7 +40,7 @@ def create_user(user_id) -> str:
     graph_with_labels.x = torch.cat([graph_with_labels.x, default_feat.unsqueeze(0)], dim=0)
 
 
-def add_user_relations(user_id: str, rest_id_list: list[str], preference_list: list[int]) -> bool:
+def add_user_relations(user_id: str, rest_id_list: list[str], preference_list: list[int]):
     if len(rest_id_list) != len(preference_list):
         return False
 
@@ -101,5 +101,3 @@ def add_user_relations(user_id: str, rest_id_list: list[str], preference_list: l
                 graph.edge_label = new_edge_label
 
     _update_graph(g.graph_with_labels, g.user_to_idx_ep[user_id], g.restaurant_to_idx_ep)
-
-    return True

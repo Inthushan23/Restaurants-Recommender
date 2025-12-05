@@ -33,7 +33,9 @@ async def get_rec(input: RecRequest):
     return {"recommendation": rec}
 
 @router.post("/cold_start")
-async def cold_start(user_id, cold_start_restaurants, label_tastes):
-    await add_user_relations(user_id, cold_start_restaurants, label_tastes)
+async def cold_start(user_id: str,cold_start_restaurants: list[str],label_tastes: list[int],):
 
-    await add_relations(user_id, cold_start_restaurants, label_tastes)
+    await asyncio.to_thread(add_user_relations, user_id, cold_start_restaurants, label_tastes)
+    await asyncio.to_thread(add_relations, user_id, cold_start_restaurants, label_tastes)
+
+    return {"status": "ok"}
